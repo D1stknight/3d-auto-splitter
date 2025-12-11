@@ -1,66 +1,105 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import React, { useState } from "react";
 
 export default function Home() {
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<string>("Idle");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file) {
+      alert("Please select a 3D model file first.");
+      return;
+    }
+
+    setStatus("Uploading and starting job...");
+    setDownloadUrl(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("model", file);
+
+      const res = await fetch("/api/start-job", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to start job");
+      }
+
+      const data = await res.json();
+
+      if (data.downloadUrl) {
+        // For our early mock version
+        setStatus("Done! Download is ready.");
+        setDownloadUrl(data.downloadUrl);
+      } else {
+        setStatus("Job started (mock). Real splitting coming soon.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setStatus("Error starting job.");
+      alert("Something went wrong starting the job.");
+    }
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="w-full max-w-xl p-6 rounded-xl border border-gray-700 bg-gray-900">
+        <h1 className="text-2xl font-bold mb-2 text-center">
+          3D Auto Splitter (v1)
+        </h1>
+        <p className="text-sm mb-6 text-center">
+          Upload a 3D model (STL/OBJ/GLB). We&apos;ll send it to our splitter
+          backend and return separate parts.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm mb-2">
+              Choose a 3D model file:
+            </label>
+            <input
+              type="file"
+              accept=".stl,.obj,.glb,.gltf"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setFile(f);
+                setDownloadUrl(null);
+              }}
+              className="block w-full text-sm"
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2 rounded-md bg-lime-400 hover:bg-lime-300 text-black font-semibold"
           >
-            Documentation
-          </a>
+            Start Split Job
+          </button>
+        </form>
+
+        <div className="mt-4 text-sm">
+          <div>
+            <span className="font-semibold">Status:</span> {status}
+          </div>
+          {downloadUrl && (
+            <div className="mt-2">
+              <a
+                href={downloadUrl}
+                className="underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Download split parts (ZIP)
+              </a>
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
